@@ -84,7 +84,7 @@ class Connection {
   struct Subscription {
     using on_message = std::function< //
         void(std::string_view subject, std::string_view reply_to,
-             std::span<char> data)>;
+             std::string &&data)>;
 
     uint64_t sid;
     on_message callback;
@@ -92,7 +92,16 @@ class Connection {
 
 public:
   Connection() = default;
-  ~Connection() { stream_.close(); }
+  Connection(Connection const &) = delete;
+  auto operator=(Connection const &) = delete;
+  Connection(Connection &&other)
+      : stream_{std::exchange(other.stream_, {})}, subs_mutex_{},
+        subs_{std::exchange(subs_, {})},
+        stop_{std::exchange(other.connected_, {})},
+        connected_{std::exchange(other.connected_, {})},
+        sid_{std::exchange(other.sid_, {})} {}
+  Connection &operator=(Connection &&) = delete;
+  ~Connection() { close(); }
 
   std::function<Error(void)> on_ping = [this] {
     stream_ << "PONG\r\n";
@@ -104,6 +113,8 @@ public:
   std::function<Error(std::string_view)> on_info;
   std::function<Error(Error)> on_error;
   std::function<void(Connection &)> on_connected;
+
+  Stream &stream() { return stream_; }
 
   Error publish(std::string_view subject, std::string_view reply_to,
                 std::span<char const> data) {
@@ -158,13 +169,19 @@ public:
     return run(cfg);
   }
 
+  void close() {
+    stop_ = true;
+    if constexpr (requires { stream_.close(); })
+      stream_.close();
+  }
+
   Error run(ConnectConfig const &cfg) {
     for (;;) {
       if (stop_)
         return {};
 
       if (not connected_) {
-        if (auto ec = do_connect(cfg); ec.has_error()) {
+        if (auto ec = connect(cfg); ec.has_error()) {
           std::this_thread::sleep_for(std::chrono::seconds(3));
           continue;
         }
@@ -180,6 +197,14 @@ public:
         // TODO handle error;
       }
     }
+  }
+
+  Error connect(ConnectConfig const &cfg) {
+    if constexpr (requires { stream_.connect(cfg.addr, cfg.port); })
+      stream_.connect(cfg.addr, cfg.port);
+    stream_ << cfg.to_string();
+    stream_.flush();
+    return {};
   }
 
 private:
@@ -202,15 +227,8 @@ private:
     }
 
     if (std::string buf(n, '\0'); stream_.read(buf.data(), n))
-      sub.callback(subject, reply_to, std::span{buf.data(), buf.size()});
+      sub.callback(subject, reply_to, buf.data());
 
-    return {};
-  }
-
-  Error do_connect(ConnectConfig const &cfg) {
-    stream_.connect(cfg.addr, cfg.port);
-    stream_ << cfg.to_string();
-    stream_.flush();
     return {};
   }
 
@@ -290,5 +308,12 @@ private:
 };
 
 using TcpConnection = Connection<tcp::iostream>;
+
+inline auto run(TcpConnection &conn, std::string_view port = "4222",
+                std::string_view addr = "localhost") {
+  return std::thread([&conn](std::string_view port,
+                             std::string_view addr) { conn.run(port, addr); },
+                     port, addr);
+}
 
 } // namespace nats

@@ -24,7 +24,12 @@ include_directories(
 
 link_libraries(pthread)
 
+add_library(nats-st SHARED
+  st/nats.cpp
+)
+
 add_executable(st
+  st/nats.cpp
   st/main.cpp
 )
 
