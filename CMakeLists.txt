@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.29)
 
-# set(CMAKE_C_COMPILER /usr/bin/gcc)
-# set(CMAKE_CXX_COMPILER /usr/bin/g++)
+set(CMAKE_C_COMPILER /home/zhjun/Apps/clang)
+set(CMAKE_CXX_COMPILER /home/zhjun/Apps/clang++)
 
 project(nats-cpp
   LANGUAGES CXX
   VERSION 1.0.0
 )
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS OFF)
 # set(CMAKE_LINKER_TYPE LLD)
@@ -29,6 +29,7 @@ add_library(nats-st SHARED
 )
 
 add_executable(st
+  src/conn.cpp
   st/nats.cpp
   st/main.cpp
 )

@@ -21,8 +21,6 @@ std::string format(std::string_view fmt, Args &&...args) {
   return buf;
 }
 
-struct Header {};
-
 struct ConnectConfig {
   std::string addr;
   std::string port;
