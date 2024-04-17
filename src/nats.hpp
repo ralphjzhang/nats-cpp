@@ -33,7 +33,7 @@ std::string format(std::string_view fmt, Args &&...args) {
   return buf;
 }
 
-struct Error : std::runtime_error {
+struct [[nodiscard]] Error : std::runtime_error {
   using base = std::runtime_error;
   Error() : base{""} {}
   Error(char const *what) : base{what} {}
@@ -41,6 +41,8 @@ struct Error : std::runtime_error {
 
   bool has_error() { return *what() != '\0'; }
 };
+
+struct Header {};
 
 struct ConnectConfig {
   std::string addr;
@@ -315,5 +317,8 @@ inline auto run(TcpConnection &conn, std::string_view port = "4222",
                              std::string_view addr) { conn.run(port, addr); },
                      port, addr);
 }
+
+template <typename Stream>
+expected<Connection<Stream>, Error> connect(std::string_view url) {}
 
 } // namespace nats

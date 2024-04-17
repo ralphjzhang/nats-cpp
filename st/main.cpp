@@ -3,6 +3,7 @@
 #include <span>
 #include <thread>
 
+#include "../src/jetstream.hpp"
 #include "../src/nats.hpp"
 
 int main(int argc, char const *argv[]) {
